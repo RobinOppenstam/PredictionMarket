@@ -10,11 +10,14 @@ import { useMarkets } from '@/hooks/useMarkets';
 import { Button } from '@/components/ui/button';
 import { Loader2, TrendingUp } from 'lucide-react';
 
+type MarketFilter = 'all' | 'active' | 'resolved';
+
 export default function Home() {
   const { address, isConnected } = useAccount();
   const { markets, loading, refreshMarkets } = useMarkets();
   const [isOwner, setIsOwner] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [filter, setFilter] = useState<MarketFilter>('active');
 
   useEffect(() => {
     setMounted(true);
@@ -25,6 +28,13 @@ export default function Home() {
     // This would need to be implemented based on your contract
     setIsOwner(false);
   }, [address]);
+
+  // Filter markets based on selected filter
+  const filteredMarkets = markets.filter(market => {
+    if (filter === 'active') return !market.resolved;
+    if (filter === 'resolved') return market.resolved;
+    return true; // 'all'
+  });
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
@@ -94,30 +104,70 @@ export default function Home() {
             </div>
 
             {/* Markets List */}
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-white">Markets</h2>
-              <Button
-                onClick={refreshMarkets}
-                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold"
-              >
-                Refresh
-              </Button>
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold text-white">Markets</h2>
+                <Button
+                  onClick={refreshMarkets}
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold"
+                >
+                  Refresh
+                </Button>
+              </div>
+
+              {/* Filter Tabs */}
+              <div className="flex gap-2 bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-xl p-1">
+                <button
+                  onClick={() => setFilter('active')}
+                  className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    filter === 'active'
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Active ({markets.filter(m => !m.resolved).length})
+                </button>
+                <button
+                  onClick={() => setFilter('resolved')}
+                  className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    filter === 'resolved'
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Resolved ({markets.filter(m => m.resolved).length})
+                </button>
+                <button
+                  onClick={() => setFilter('all')}
+                  className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    filter === 'all'
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  All ({markets.length})
+                </button>
+              </div>
             </div>
 
             {loading ? (
               <div className="flex items-center justify-center py-20">
                 <Loader2 className="w-8 h-8 animate-spin text-purple-400" />
               </div>
-            ) : markets.length === 0 ? (
+            ) : filteredMarkets.length === 0 ? (
               <div className="text-center py-20">
-                <p className="text-slate-400 text-lg">No markets available yet</p>
-                {isOwner && (
+                <p className="text-slate-400 text-lg">
+                  {filter === 'active' && 'No active markets'}
+                  {filter === 'resolved' && 'No resolved markets'}
+                  {filter === 'all' && 'No markets available yet'}
+                </p>
+                {isOwner && filter === 'all' && (
                   <p className="text-slate-500 mt-2">Create your first market to get started</p>
                 )}
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {markets.map((market) => (
+                {filteredMarkets.map((market) => (
                   <MarketCard key={market.id} market={market} />
                 ))}
               </div>

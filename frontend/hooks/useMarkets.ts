@@ -67,7 +67,7 @@ export function useMarkets() {
         }
       }
 
-      return {
+      const market = {
         id: marketId,
         name: marketData.name || marketData[0],
         outcomeA: marketData.outcomeA || marketData[1],
@@ -80,8 +80,13 @@ export function useMarkets() {
         endTime: Number(marketData.endTime || marketData[8]),
         resolved: marketData.resolved ?? marketData[9],
         outcomeAWon: marketData.outcomeAWon ?? marketData[10],
+        marketType: Number(marketData.marketType ?? marketData[12] ?? 0),
+        creationPrice: marketData.creationPrice || marketData[13] || BigInt(0),
+        isAutomatic: marketData.isAutomatic ?? marketData[14] ?? false,
         userBet,
       };
+
+      return market;
     } catch (error) {
       console.error(`Error fetching market ${marketId}:`, error);
       return null;

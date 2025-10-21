@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 contract PredictionMarket is Ownable, ReentrancyGuard {
+    enum MarketType { RACE, DAILY_OVER_UNDER }
+
     struct Market {
         string name;
         string outcomeA;
@@ -19,6 +21,9 @@ contract PredictionMarket is Ownable, ReentrancyGuard {
         bool resolved;
         bool outcomeAWon;
         uint256 fee; // Fee in basis points (e.g., 200 = 2%)
+        MarketType marketType;
+        int256 creationPrice; // For DAILY_OVER_UNDER: price at market creation
+        bool isAutomatic; // True if this market is managed by automation
     }
 
     struct Bet {
@@ -28,10 +33,11 @@ contract PredictionMarket is Ownable, ReentrancyGuard {
 
     Market[] public markets;
     mapping(uint256 => mapping(address => Bet)) public bets;
-    
+
     uint256 public constant FEE_DENOMINATOR = 10000;
     uint256 public protocolFee = 200; // 2% default fee
     address public feeCollector;
+    address public automationService; // Address allowed to create/resolve automatic markets
 
     event MarketCreated(
         uint256 indexed marketId,
@@ -93,7 +99,10 @@ contract PredictionMarket is Ownable, ReentrancyGuard {
             endTime: endTime,
             resolved: false,
             outcomeAWon: false,
-            fee: protocolFee
+            fee: protocolFee,
+            marketType: MarketType.RACE,
+            creationPrice: 0,
+            isAutomatic: false
         }));
 
         emit MarketCreated(
@@ -103,6 +112,53 @@ contract PredictionMarket is Ownable, ReentrancyGuard {
             _outcomeB,
             _targetPrice,
             endTime
+        );
+    }
+
+    function createDailyOverUnder(
+        address _oracle,
+        uint256 _endTime
+    ) external {
+        require(
+            msg.sender == owner() || msg.sender == automationService,
+            "Only owner or automation service"
+        );
+        require(_oracle != address(0), "Invalid oracle address");
+        require(_endTime > block.timestamp, "End time must be in future");
+
+        // Get current price from oracle
+        (int256 currentPrice, ) = getLatestPrice(_oracle);
+        require(currentPrice > 0, "Invalid current price");
+
+        string memory name = "Daily Bitcoin Over/Under";
+        string memory outcomeA = "Over";
+        string memory outcomeB = "Under";
+
+        markets.push(Market({
+            name: name,
+            outcomeA: outcomeA,
+            outcomeB: outcomeB,
+            oracleA: _oracle, // Same oracle for both
+            oracleB: _oracle,
+            targetPrice: currentPrice, // Target is the creation price
+            totalPoolA: 0,
+            totalPoolB: 0,
+            endTime: _endTime,
+            resolved: false,
+            outcomeAWon: false,
+            fee: protocolFee,
+            marketType: MarketType.DAILY_OVER_UNDER,
+            creationPrice: currentPrice,
+            isAutomatic: msg.sender == automationService
+        }));
+
+        emit MarketCreated(
+            markets.length - 1,
+            name,
+            outcomeA,
+            outcomeB,
+            currentPrice,
+            _endTime
         );
     }
 
@@ -139,6 +195,29 @@ contract PredictionMarket is Ownable, ReentrancyGuard {
         Market storage market = markets[_marketId];
         require(!market.resolved, "Market already resolved");
 
+        if (market.marketType == MarketType.DAILY_OVER_UNDER) {
+            _resolveDailyMarket(_marketId, market);
+        } else {
+            _resolveRaceMarket(_marketId, market);
+        }
+    }
+
+    function _resolveDailyMarket(uint256 _marketId, Market storage market) internal {
+        require(block.timestamp >= market.endTime, "Daily market can only resolve at end time");
+
+        (int256 currentPrice, uint256 timestamp) = getLatestPrice(market.oracleA);
+        require(timestamp > 0, "Invalid oracle data");
+
+        // Outcome A (Over) wins if current price > creation price
+        bool outcomeAWon = currentPrice > market.creationPrice;
+
+        market.resolved = true;
+        market.outcomeAWon = outcomeAWon;
+
+        emit MarketResolved(_marketId, outcomeAWon, currentPrice, currentPrice);
+    }
+
+    function _resolveRaceMarket(uint256 _marketId, Market storage market) internal {
         (int256 priceA, uint256 timestampA) = getLatestPrice(market.oracleA);
         (int256 priceB, uint256 timestampB) = getLatestPrice(market.oracleB);
 
@@ -152,24 +231,20 @@ contract PredictionMarket is Ownable, ReentrancyGuard {
             canResolve = true;
 
             if (priceA >= market.targetPrice && priceB >= market.targetPrice) {
-                // Both hit target - winner is whoever hit it first (based on oracle timestamp)
                 outcomeAWon = timestampA <= timestampB;
-            } else if (priceA >= market.targetPrice) {
-                outcomeAWon = true;
             } else {
-                outcomeAWon = false;
+                outcomeAWon = priceA >= market.targetPrice;
             }
         }
         // Check if deadline has passed (fallback resolution)
         else if (block.timestamp >= market.endTime) {
             canResolve = true;
-            // Neither hit target - winner is whoever got closest
             int256 diffA = market.targetPrice - priceA;
             int256 diffB = market.targetPrice - priceB;
             outcomeAWon = diffA <= diffB;
         }
 
-        require(canResolve, "Market cannot be resolved yet - target not reached and deadline not passed");
+        require(canResolve, "Market cannot be resolved yet");
 
         market.resolved = true;
         market.outcomeAWon = outcomeAWon;
@@ -266,6 +341,10 @@ contract PredictionMarket is Ownable, ReentrancyGuard {
     function setFeeCollector(address _feeCollector) external onlyOwner {
         require(_feeCollector != address(0), "Invalid address");
         feeCollector = _feeCollector;
+    }
+
+    function setAutomationService(address _automationService) external onlyOwner {
+        automationService = _automationService;
     }
 
     receive() external payable {}

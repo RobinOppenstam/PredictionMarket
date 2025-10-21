@@ -1,3 +1,8 @@
+export enum MarketType {
+  RACE = 0,
+  DAILY_OVER_UNDER = 1,
+}
+
 export interface Market {
   id: number;
   name: string;
@@ -11,6 +16,9 @@ export interface Market {
   endTime: number;
   resolved: boolean;
   outcomeAWon: boolean;
+  marketType: MarketType;
+  creationPrice: bigint;
+  isAutomatic: boolean;
   userBet?: {
     amount: bigint;
     betOnA: boolean;

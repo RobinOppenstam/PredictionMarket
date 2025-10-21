@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { parseEther, formatEther } from 'viem';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { usePlaceBet, useResolveMarket, useClaimWinnings } from '@/hooks/useMarketActions';
 import { Loader2, TrendingUp, Clock, CheckCircle2, Trophy } from 'lucide-react';
-import { Market } from '@/types';
+import { Market, MarketType } from '@/types';
 
 interface MarketCardProps {
   market: Market;
@@ -18,10 +18,21 @@ interface MarketCardProps {
 export function MarketCard({ market }: MarketCardProps) {
   const [betAmount, setBetAmount] = useState('');
   const [selectedOutcome, setSelectedOutcome] = useState<'A' | 'B' | null>(null);
+  const [, setNow] = useState(Date.now());
 
   const { placeBet, isPlacingBet } = usePlaceBet();
   const { resolveMarket, isResolving } = useResolveMarket();
   const { claimWinnings, isClaiming } = useClaimWinnings();
+
+  // Update countdown every second
+  useEffect(() => {
+    if (!market.resolved) {
+      const interval = setInterval(() => {
+        setNow(Date.now());
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [market.resolved]);
 
   // Helper to format ETH amounts without trailing zeros
   const formatETH = (value: number): string => {
@@ -96,6 +107,8 @@ export function MarketCard({ market }: MarketCardProps) {
   const timeLeft = market.endTime - Date.now() / 1000;
   const daysLeft = Math.max(0, Math.floor(timeLeft / 86400));
   const hoursLeft = Math.max(0, Math.floor((timeLeft % 86400) / 3600));
+  const minutesLeft = Math.max(0, Math.floor((timeLeft % 3600) / 60));
+  const secondsLeft = Math.max(0, Math.floor(timeLeft % 60));
 
   const canResolve = !market.resolved && timeLeft <= 0;
   const canClaim = market.resolved && market.userBet && market.userBet.betOnA === market.outcomeAWon;
@@ -150,16 +163,26 @@ export function MarketCard({ market }: MarketCardProps) {
           {market.resolved ? (
             'Market closed'
           ) : (
-            `${daysLeft}d ${hoursLeft}h remaining`
+            `${daysLeft}d ${hoursLeft}h ${minutesLeft}m ${secondsLeft}s remaining`
           )}
         </CardDescription>
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {/* Target Price */}
+        {/* Target Price or Creation Price */}
         <div className="bg-slate-800/50 rounded-xl p-4">
-          <p className="text-slate-400 text-sm mb-1">Target Price</p>
-          <p className="text-2xl font-bold text-white">${(Number(market.targetPrice) / 1e8).toLocaleString()}</p>
+          {market.marketType === MarketType.DAILY_OVER_UNDER ? (
+            <>
+              <p className="text-slate-400 text-sm mb-1">Starting Price (Today at 00:01)</p>
+              <p className="text-2xl font-bold text-white">${(Number(market.creationPrice) / 1e8).toLocaleString()}</p>
+              <p className="text-slate-500 text-xs mt-2">Will resolve at midnight (00:00)</p>
+            </>
+          ) : (
+            <>
+              <p className="text-slate-400 text-sm mb-1">Target Price</p>
+              <p className="text-2xl font-bold text-white">${(Number(market.targetPrice) / 1e8).toLocaleString()}</p>
+            </>
+          )}
         </div>
 
         {/* Outcomes */}
