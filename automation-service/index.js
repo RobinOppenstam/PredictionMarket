@@ -26,6 +26,7 @@ let provider;
 let wallet;
 let contract;
 let oracle;
+let isProcessing = false; // Lock to prevent concurrent executions
 
 // Initialize connection
 async function initialize() {
@@ -158,6 +159,13 @@ async function resolveDailyMarket(marketId) {
 
 // Main job that runs every minute
 async function checkAndExecute() {
+  // Prevent concurrent executions
+  if (isProcessing) {
+    console.log('Already processing, skipping this check...');
+    return;
+  }
+
+  isProcessing = true;
   const now = Math.floor(Date.now() / 1000);
   const currentTime = new Date().toLocaleTimeString();
 
@@ -184,9 +192,8 @@ async function checkAndExecute() {
         if (success) {
           // Wait 10 seconds then create new market
           console.log('Waiting 10 seconds before creating new market...');
-          setTimeout(async () => {
-            await createDailyMarket();
-          }, 10000);
+          await new Promise(resolve => setTimeout(resolve, 10000));
+          await createDailyMarket();
         }
       } else if (resolved) {
         // Market is resolved but new one hasn't been created yet
@@ -209,6 +216,7 @@ async function checkAndExecute() {
     console.error('Error in checkAndExecute:', error.message);
   }
 
+  isProcessing = false;
   console.log('---');
 }
 
