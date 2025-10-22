@@ -50,8 +50,8 @@ export function useOraclePrice(oracleAddress: string | null) {
   useEffect(() => {
     fetchPrice();
 
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchPrice, 30000);
+    // Refresh every 105 seconds
+    const interval = setInterval(fetchPrice, 105000);
     return () => clearInterval(interval);
   }, [publicClient, oracleAddress]);
 

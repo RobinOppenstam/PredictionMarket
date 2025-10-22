@@ -15,7 +15,7 @@ export function useFaucet() {
     args: address ? [address] : undefined,
     query: {
       enabled: !!address,
-      refetchInterval: 5000, // Refetch every 5 seconds
+      refetchInterval: 500000, // Refetch every 500 seconds
     },
   });
 

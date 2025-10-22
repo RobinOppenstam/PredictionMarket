@@ -62,11 +62,17 @@ export function Navbar() {
             </nav>
           </div>
 
-          {/* Right Side Actions */}
-          <div className="flex items-center gap-4">
+          {/* Right Side Actions - Desktop Only */}
+          <div className="hidden md:flex items-center gap-4">
             {mounted && isConnected && <TokenBalances />}
             <ConnectButton />
           </div>
+        </div>
+
+        {/* Mobile Wallet Section */}
+        <div className="md:hidden flex flex-col gap-3 mt-4 pt-4 border-t border-slate-800">
+          {mounted && isConnected && <TokenBalances />}
+          <ConnectButton />
         </div>
 
         {/* Mobile Navigation */}

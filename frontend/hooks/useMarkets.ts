@@ -96,9 +96,9 @@ export function useMarkets() {
 
   useEffect(() => {
     fetchMarkets();
-    
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchMarkets, 30000);
+
+    // Refresh every 3 minutes
+    const interval = setInterval(fetchMarkets, 180000);
     return () => clearInterval(interval);
   }, [publicClient, address]);
 

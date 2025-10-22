@@ -60,8 +60,8 @@ export function useTokenBalances() {
 
   useEffect(() => {
     fetchBalances();
-    // Refresh every 5 seconds
-    const interval = setInterval(fetchBalances, 5000);
+    // Refresh every 45 seconds
+    const interval = setInterval(fetchBalances, 45000);
     return () => clearInterval(interval);
   }, [address, publicClient]);
 
