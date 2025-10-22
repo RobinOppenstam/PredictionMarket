@@ -20,6 +20,7 @@ export function useMarkets() {
         address: PREDICTION_MARKET_ADDRESS,
         abi: PREDICTION_MARKET_ABI,
         functionName: 'getMarketCount',
+        args: [],
       }) as bigint;
 
       const marketPromises = [];
