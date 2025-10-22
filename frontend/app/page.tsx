@@ -5,6 +5,7 @@ import { useAccount } from 'wagmi';
 import { formatEther } from 'viem';
 import { MarketCard } from '@/components/MarketCard';
 import { ConnectButton } from '@/components/ConnectButton';
+import TokenBalances from '@/components/TokenBalances';
 import { useMarkets } from '@/hooks/useMarkets';
 import { Button } from '@/components/ui/button';
 import { Loader2, TrendingUp } from 'lucide-react';
@@ -56,12 +57,15 @@ export default function Home() {
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-bold text-white">Markets</h2>
-                <Button
-                  onClick={refreshMarkets}
-                  className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold"
-                >
-                  Refresh
-                </Button>
+                <div className="flex items-center gap-2">
+                  <TokenBalances />
+                  <Button
+                    onClick={refreshMarkets}
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold"
+                  >
+                    Refresh
+                  </Button>
+                </div>
               </div>
 
               {/* Filter Tabs */}
@@ -130,14 +134,14 @@ export default function Home() {
               <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-2xl p-6">
                 <p className="text-slate-400 text-sm mb-1">Total Volume</p>
                 <p className="text-3xl font-bold text-white">
-                  {(() => {
+                  ${(() => {
                     const total = markets.reduce((acc, m) => {
                       const poolA = BigInt(m.totalPoolA || 0);
                       const poolB = BigInt(m.totalPoolB || 0);
                       return acc + poolA + poolB;
                     }, BigInt(0));
-                    return Number(formatEther(total)).toFixed(2);
-                  })()} ETH
+                    return Math.floor(Number(formatEther(total))).toLocaleString('en-US');
+                  })()}
                 </p>
               </div>
               <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-2xl p-6">

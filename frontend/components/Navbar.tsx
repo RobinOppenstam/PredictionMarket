@@ -1,21 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { TrendingUp, Home, Droplet } from 'lucide-react';
 import { ConnectButton } from '@/components/ConnectButton';
-import TokenBalances from '@/components/TokenBalances';
-import { useAccount } from 'wagmi';
 
 export function Navbar() {
   const pathname = usePathname();
-  const { isConnected } = useAccount();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const navLinks = [
     { href: '/', label: 'Markets', icon: Home },
@@ -64,14 +55,12 @@ export function Navbar() {
 
           {/* Right Side Actions - Desktop Only */}
           <div className="hidden md:flex items-center gap-4">
-            {mounted && isConnected && <TokenBalances />}
             <ConnectButton />
           </div>
         </div>
 
         {/* Mobile Wallet Section */}
         <div className="md:hidden flex flex-col gap-3 mt-4 pt-4 border-t border-slate-800">
-          {mounted && isConnected && <TokenBalances />}
           <ConnectButton />
         </div>
 

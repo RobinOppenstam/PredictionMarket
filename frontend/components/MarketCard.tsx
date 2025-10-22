@@ -274,7 +274,7 @@ export function MarketCard({ market }: MarketCardProps) {
                       : 'text-slate-400'
                     : 'text-slate-400'
                 }`}>
-                  {priceA ? `$${parseFloat(priceA).toLocaleString()}` : '...'}
+                  {priceA ? `$${Math.floor(parseFloat(priceA)).toLocaleString()}` : '...'}
                 </p>
               </div>
             </>
@@ -288,13 +288,13 @@ export function MarketCard({ market }: MarketCardProps) {
                 <div>
                   <p className="text-slate-400 text-xs">Gold Price</p>
                   <p className="text-sm font-semibold text-yellow-400">
-                    {priceA ? `$${parseFloat(priceA).toLocaleString()}` : '...'}
+                    {priceA ? `$${Math.floor(parseFloat(priceA)).toLocaleString()}` : '...'}
                   </p>
                 </div>
                 <div>
                   <p className="text-slate-400 text-xs">ETH Price</p>
                   <p className="text-sm font-semibold text-blue-400">
-                    {priceB ? `$${parseFloat(priceB).toLocaleString()}` : '...'}
+                    {priceB ? `$${Math.floor(parseFloat(priceB)).toLocaleString()}` : '...'}
                   </p>
                 </div>
               </div>
