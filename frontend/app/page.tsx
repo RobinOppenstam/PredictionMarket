@@ -1,20 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAccount } from 'wagmi';
 import { formatEther } from 'viem';
 import { MarketCard } from '@/components/MarketCard';
-import { ConnectButton } from '@/components/ConnectButton';
 import TokenBalances from '@/components/TokenBalances';
 import { useMarkets } from '@/hooks/useMarkets';
 import { Button } from '@/components/ui/button';
-import { Loader2, TrendingUp } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { MarketType } from '@/types';
 
 type MarketFilter = 'all' | 'daily' | 'other';
 
 export default function Home() {
-  const { isConnected } = useAccount();
   const { markets, loading, refreshMarkets } = useMarkets();
   const [mounted, setMounted] = useState(false);
   const [filter, setFilter] = useState<MarketFilter>('all');
@@ -39,17 +36,6 @@ export default function Home() {
         {!mounted ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-purple-400" />
-          </div>
-        ) : !isConnected ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center mb-6">
-              <TrendingUp className="w-10 h-10 text-purple-400" />
-            </div>
-            <h2 className="text-3xl font-bold text-white mb-2">Welcome to PredictMarket</h2>
-            <p className="text-slate-400 mb-8 text-center max-w-md">
-              Connect your wallet to start betting on prediction markets powered by Chainlink oracles
-            </p>
-            <ConnectButton />
           </div>
         ) : (
           <>

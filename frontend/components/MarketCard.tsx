@@ -3,11 +3,13 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { parseEther, parseUnits, formatEther, formatUnits } from 'viem';
+import { useAccount } from 'wagmi';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { ConnectButton } from '@/components/ConnectButton';
 import { usePlaceBet, useResolveMarket, useClaimWinnings } from '@/hooks/useMarketActions';
 import { useTokenApproval, useTokenBalances } from '@/hooks/useTokensSimple';
 import { useOraclePrice } from '@/hooks/useOraclePrice';
@@ -60,6 +62,7 @@ export function MarketCard({ market }: MarketCardProps) {
   const [selectedOutcome, setSelectedOutcome] = useState<'A' | 'B' | null>(null);
   const [now, setNow] = useState(Date.now());
 
+  const { isConnected } = useAccount();
   const { placeBet, isPlacingBet } = usePlaceBet();
   const { resolveMarket, isResolving } = useResolveMarket();
   const { claimWinnings, isClaiming } = useClaimWinnings();
@@ -391,53 +394,61 @@ export function MarketCard({ market }: MarketCardProps) {
         {/* Bet Input */}
         {!market.resolved && !market.userBet && selectedOutcome && (
           <div className="space-y-3">
-            <Input
-              type="number"
-              placeholder="Amount in $"
-              value={betAmount}
-              onChange={(e) => setBetAmount(e.target.value)}
-              className="bg-slate-800 border-slate-700 text-white"
-              step="1"
-              min="0"
-            />
-            <div className="flex justify-between text-sm text-slate-400">
-              <span>Your Balance:</span>
-              <span>${parseFloat(pUsdBalance).toFixed(2)}</span>
-            </div>
-
-            {needsApproval ? (
-              <Button
-                onClick={handleApprove}
-                disabled={isApproving || isApprovingConfirm || !betAmount}
-                className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600"
-              >
-                {isApproving || isApprovingConfirm ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Approving...
-                  </>
-                ) : (
-                  <>
-                    <Lock className="w-4 h-4 mr-2" />
-                    Approve ${betAmount || '0'}
-                  </>
-                )}
-              </Button>
+            {!isConnected ? (
+              <div className="text-center">
+                <ConnectButton />
+              </div>
             ) : (
-              <Button
-                onClick={handleBet}
-                disabled={isPlacingBet || !betAmount}
-                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-              >
-                {isPlacingBet ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Placing Bet...
-                  </>
+              <>
+                <Input
+                  type="number"
+                  placeholder="Amount in $"
+                  value={betAmount}
+                  onChange={(e) => setBetAmount(e.target.value)}
+                  className="bg-slate-800 border-slate-700 text-white"
+                  step="1"
+                  min="0"
+                />
+                <div className="flex justify-between text-sm text-slate-400">
+                  <span>Your Balance:</span>
+                  <span>${parseFloat(pUsdBalance).toFixed(2)}</span>
+                </div>
+
+                {needsApproval ? (
+                  <Button
+                    onClick={handleApprove}
+                    disabled={isApproving || isApprovingConfirm || !betAmount}
+                    className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600"
+                  >
+                    {isApproving || isApprovingConfirm ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Approving...
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="w-4 h-4 mr-2" />
+                        Approve ${betAmount || '0'}
+                      </>
+                    )}
+                  </Button>
                 ) : (
-                  `Bet $${betAmount || '0'} on ${selectedOutcome === 'A' ? formatOutcome(market.outcomeA, market.marketType) : formatOutcome(market.outcomeB, market.marketType)}`
+                  <Button
+                    onClick={handleBet}
+                    disabled={isPlacingBet || !betAmount}
+                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                  >
+                    {isPlacingBet ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Placing Bet...
+                      </>
+                    ) : (
+                      `Bet $${betAmount || '0'} on ${selectedOutcome === 'A' ? formatOutcome(market.outcomeA, market.marketType) : formatOutcome(market.outcomeB, market.marketType)}`
+                    )}
+                  </Button>
                 )}
-              </Button>
+              </>
             )}
           </div>
         )}
