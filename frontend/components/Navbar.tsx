@@ -1,12 +1,14 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { TrendingUp, Home, Droplet } from 'lucide-react';
+import { TrendingUp, Home, Droplet, Menu, X } from 'lucide-react';
 import { ConnectButton } from '@/components/ConnectButton';
 
 export function Navbar() {
   const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navLinks = [
     { href: '/', label: 'Markets', icon: Home },
@@ -24,13 +26,10 @@ export function Navbar() {
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
                 <TrendingUp className="w-6 h-6 text-white" />
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-white">PredictMarket</h1>
-                <p className="text-sm text-slate-400">Decentralized Prediction Markets</p>
-              </div>
+              <h1 className="text-2xl font-bold text-white">PredictMarket</h1>
             </Link>
 
-            {/* Navigation Links */}
+            {/* Navigation Links - Desktop Only */}
             <nav className="hidden md:flex items-center gap-2">
               {navLinks.map((link) => {
                 const Icon = link.icon;
@@ -53,38 +52,60 @@ export function Navbar() {
             </nav>
           </div>
 
-          {/* Right Side Actions - Desktop Only */}
-          <div className="hidden md:flex items-center gap-4">
-            <ConnectButton />
+          {/* Right Side Actions */}
+          <div className="flex items-center gap-4">
+            {/* Desktop: Connect Button */}
+            <div className="hidden md:flex">
+              <ConnectButton />
+            </div>
+
+            {/* Mobile: Hamburger Menu */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden text-white hover:text-purple-400 transition-colors"
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
+            </button>
           </div>
         </div>
 
-        {/* Mobile Wallet Section */}
-        <div className="md:hidden flex flex-col gap-3 mt-4 pt-4 border-t border-slate-800">
-          <ConnectButton />
-        </div>
+        {/* Mobile Menu Dropdown */}
+        {mobileMenuOpen && (
+          <div className="md:hidden mt-4 pt-4 border-t border-slate-800 space-y-3">
+            {/* Connect Button */}
+            <div className="pb-3 border-b border-slate-800">
+              <ConnectButton />
+            </div>
 
-        {/* Mobile Navigation */}
-        <nav className="md:hidden flex items-center gap-2 mt-4 border-t border-slate-800 pt-4">
-          {navLinks.map((link) => {
-            const Icon = link.icon;
-            const isActive = pathname === link.href;
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-all ${
-                  isActive
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                {link.label}
-              </Link>
-            );
-          })}
-        </nav>
+            {/* Navigation Links */}
+            <nav className="space-y-2">
+              {navLinks.map((link) => {
+                const Icon = link.icon;
+                const isActive = pathname === link.href;
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                      isActive
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    <span className="font-medium">{link.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        )}
       </div>
     </header>
   );

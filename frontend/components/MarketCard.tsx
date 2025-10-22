@@ -309,10 +309,10 @@ export function MarketCard({ market }: MarketCardProps) {
         <div className="space-y-3">
           {/* Outcome A */}
           <button
-            onClick={() => !market.resolved && setSelectedOutcome('A')}
-            disabled={market.resolved}
+            onClick={() => !market.resolved && !market.userBet && setSelectedOutcome('A')}
+            disabled={market.resolved || !!market.userBet}
             className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-              selectedOutcome === 'A'
+              selectedOutcome === 'A' || (market.userBet && market.userBet.betOnA)
                 ? 'border-purple-500 bg-purple-500/10'
                 : market.resolved && market.outcomeAWon
                 ? 'border-green-500 bg-green-500/10'
@@ -336,10 +336,10 @@ export function MarketCard({ market }: MarketCardProps) {
 
           {/* Outcome B */}
           <button
-            onClick={() => !market.resolved && setSelectedOutcome('B')}
-            disabled={market.resolved}
+            onClick={() => !market.resolved && !market.userBet && setSelectedOutcome('B')}
+            disabled={market.resolved || !!market.userBet}
             className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-              selectedOutcome === 'B'
+              selectedOutcome === 'B' || (market.userBet && !market.userBet.betOnA)
                 ? 'border-pink-500 bg-pink-500/10'
                 : market.resolved && !market.outcomeAWon
                 ? 'border-green-500 bg-green-500/10'
