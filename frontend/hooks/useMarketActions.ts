@@ -21,8 +21,7 @@ export function usePlaceBet() {
         address: PREDICTION_MARKET_ADDRESS,
         abi: PREDICTION_MARKET_ABI,
         functionName: 'placeBet',
-        args: [BigInt(marketId), betOnA],
-        value: amount,
+        args: [BigInt(marketId), betOnA, amount],
         account: walletClient.account,
       });
 

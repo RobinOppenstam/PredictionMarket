@@ -4,8 +4,11 @@ pragma solidity ^0.8.20;
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract PredictionMarket is Ownable, ReentrancyGuard {
+    using SafeERC20 for IERC20;
     enum MarketType { RACE, DAILY_OVER_UNDER }
 
     struct Market {
@@ -39,6 +42,9 @@ contract PredictionMarket is Ownable, ReentrancyGuard {
     address public feeCollector;
     address public automationService; // Address allowed to create/resolve automatic markets
 
+    // Betting token
+    IERC20 public pUSD;  // Stablecoin for betting
+
     event MarketCreated(
         uint256 indexed marketId,
         string name,
@@ -68,8 +74,10 @@ contract PredictionMarket is Ownable, ReentrancyGuard {
         uint256 amount
     );
 
-    constructor() Ownable(msg.sender) {
+    constructor(address _pUSD) Ownable(msg.sender) {
+        require(_pUSD != address(0), "Invalid token address");
         feeCollector = msg.sender;
+        pUSD = IERC20(_pUSD);
     }
 
     function createMarket(
@@ -162,31 +170,34 @@ contract PredictionMarket is Ownable, ReentrancyGuard {
         );
     }
 
-    function placeBet(uint256 _marketId, bool _betOnA) external payable nonReentrant {
+    function placeBet(uint256 _marketId, bool _betOnA, uint256 _amount) external nonReentrant {
         require(_marketId < markets.length, "Market does not exist");
-        require(msg.value > 0, "Bet amount must be greater than 0");
-        
+        require(_amount > 0, "Bet amount must be greater than 0");
+
         Market storage market = markets[_marketId];
         require(block.timestamp < market.endTime, "Market has ended");
         require(!market.resolved, "Market already resolved");
 
+        // Transfer pUSD from user to contract
+        pUSD.safeTransferFrom(msg.sender, address(this), _amount);
+
         Bet storage userBet = bets[_marketId][msg.sender];
-        
+
         if (userBet.amount > 0) {
             require(userBet.betOnA == _betOnA, "Cannot bet on both outcomes");
-            userBet.amount += msg.value;
+            userBet.amount += _amount;
         } else {
-            userBet.amount = msg.value;
+            userBet.amount = _amount;
             userBet.betOnA = _betOnA;
         }
 
         if (_betOnA) {
-            market.totalPoolA += msg.value;
+            market.totalPoolA += _amount;
         } else {
-            market.totalPoolB += msg.value;
+            market.totalPoolB += _amount;
         }
 
-        emit BetPlaced(_marketId, msg.sender, _betOnA, msg.value);
+        emit BetPlaced(_marketId, msg.sender, _betOnA, _amount);
     }
 
     function resolveMarket(uint256 _marketId) external nonReentrant {
@@ -254,7 +265,7 @@ contract PredictionMarket is Ownable, ReentrancyGuard {
 
     function claimWinnings(uint256 _marketId) external nonReentrant {
         require(_marketId < markets.length, "Market does not exist");
-        
+
         Market storage market = markets[_marketId];
         require(market.resolved, "Market not resolved yet");
 
@@ -273,12 +284,12 @@ contract PredictionMarket is Ownable, ReentrancyGuard {
 
         userBet.amount = 0;
 
-        (bool successUser, ) = payable(msg.sender).call{value: totalPayout}("");
-        require(successUser, "Transfer to user failed");
+        // Transfer pUSD winnings to user
+        pUSD.safeTransfer(msg.sender, totalPayout);
 
+        // Transfer fee to fee collector
         if (feeAmount > 0) {
-            (bool successFee, ) = payable(feeCollector).call{value: feeAmount}("");
-            require(successFee, "Transfer to fee collector failed");
+            pUSD.safeTransfer(feeCollector, feeAmount);
         }
 
         emit WinningsClaimed(_marketId, msg.sender, totalPayout);
@@ -347,5 +358,8 @@ contract PredictionMarket is Ownable, ReentrancyGuard {
         automationService = _automationService;
     }
 
-    receive() external payable {}
+    function setToken(address _pUSD) external onlyOwner {
+        require(_pUSD != address(0), "Invalid token address");
+        pUSD = IERC20(_pUSD);
+    }
 }

@@ -1,14 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { parseEther, formatEther } from 'viem';
+import { parseEther, parseUnits, formatEther, formatUnits } from 'viem';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { usePlaceBet, useResolveMarket, useClaimWinnings } from '@/hooks/useMarketActions';
-import { Loader2, TrendingUp, Clock, CheckCircle2, Trophy } from 'lucide-react';
+import { useTokenApproval, useTokenBalances } from '@/hooks/useTokensSimple';
+import { pUSD_ADDRESS } from '@/lib/contracts';
+import { Loader2, TrendingUp, Clock, CheckCircle2, Trophy, Lock } from 'lucide-react';
 import { Market, MarketType } from '@/types';
 
 interface MarketCardProps {
@@ -23,6 +25,14 @@ export function MarketCard({ market }: MarketCardProps) {
   const { placeBet, isPlacingBet } = usePlaceBet();
   const { resolveMarket, isResolving } = useResolveMarket();
   const { claimWinnings, isClaiming } = useClaimWinnings();
+  const { pUsdBalance, refetchBalances } = useTokenBalances();
+  const {
+    approve,
+    hasAllowance,
+    isPending: isApproving,
+    isConfirming: isApprovingConfirm,
+    isSuccess: approvalSuccess
+  } = useTokenApproval(pUSD_ADDRESS);
 
   // Update countdown every second
   useEffect(() => {
@@ -34,14 +44,17 @@ export function MarketCard({ market }: MarketCardProps) {
     }
   }, [market.resolved]);
 
-  // Helper to format ETH amounts without trailing zeros
-  const formatETH = (value: number): string => {
-    return parseFloat(value.toFixed(4)).toString();
+  // Helper to format pUSD amounts without trailing zeros
+  const formatPUSD = (value: number): string => {
+    return parseFloat(value.toFixed(2)).toString();
   };
 
   const totalPool = (market.totalPoolA || BigInt(0)) + (market.totalPoolB || BigInt(0));
   const oddsA = totalPool > BigInt(0) ? (Number(market.totalPoolA || 0) / Number(totalPool)) * 100 : 50;
   const oddsB = totalPool > BigInt(0) ? (Number(market.totalPoolB || 0) / Number(totalPool)) * 100 : 50;
+
+  // Check if user needs to approve tokens
+  const needsApproval = betAmount && !hasAllowance(betAmount);
 
   // Calculate potential winnings for user's bet
   const calculatePotentialWinnings = () => {
@@ -113,17 +126,40 @@ export function MarketCard({ market }: MarketCardProps) {
   const canResolve = !market.resolved && timeLeft <= 0;
   const canClaim = market.resolved && market.userBet && market.userBet.betOnA === market.outcomeAWon;
 
+  const handleApprove = async () => {
+    if (!betAmount) return;
+    try {
+      approve(betAmount);
+    } catch (error) {
+      console.error('Error approving tokens:', error);
+    }
+  };
+
   const handleBet = async () => {
     if (!selectedOutcome || !betAmount) return;
-    
+
     try {
-      await placeBet(market.id, selectedOutcome === 'A', parseEther(betAmount));
+      await placeBet(market.id, selectedOutcome === 'A', parseUnits(betAmount, 18));
       setBetAmount('');
       setSelectedOutcome(null);
+      // Refetch balances after bet
+      setTimeout(() => refetchBalances(), 2000);
     } catch (error) {
       console.error('Error placing bet:', error);
     }
   };
+
+  // Auto-proceed to bet after approval
+  useEffect(() => {
+    if (approvalSuccess && betAmount && selectedOutcome) {
+      // Small delay to ensure blockchain state is updated
+      setTimeout(() => {
+        if (hasAllowance(betAmount)) {
+          handleBet();
+        }
+      }, 1000);
+    }
+  }, [approvalSuccess]);
 
   const handleResolve = async () => {
     try {
@@ -210,7 +246,7 @@ export function MarketCard({ market }: MarketCardProps) {
             </div>
             <Progress value={oddsA} className="h-2 bg-slate-700" />
             <p className="text-sm text-slate-400 mt-2">
-              Pool: {formatEther(market.totalPoolA || BigInt(0))} ETH
+              Pool: ${parseFloat(formatUnits(market.totalPoolA || BigInt(0), 18)).toFixed(0)}
             </p>
           </button>
 
@@ -237,30 +273,30 @@ export function MarketCard({ market }: MarketCardProps) {
             </div>
             <Progress value={oddsB} className="h-2 bg-slate-700" />
             <p className="text-sm text-slate-400 mt-2">
-              Pool: {formatEther(market.totalPoolB || BigInt(0))} ETH
+              Pool: ${parseFloat(formatUnits(market.totalPoolB || BigInt(0), 18)).toFixed(0)}
             </p>
           </button>
         </div>
 
         {/* User's Bet */}
         {market.userBet && (
-          <Card className="bg-blue-500/10 border-blue-500/30">
+          <Card className="bg-slate-800/50 border-slate-700">
             <CardHeader className="pb-3">
-              <CardTitle className="text-blue-400 text-sm font-medium">Your Position</CardTitle>
+              <CardTitle className="text-slate-300 text-sm font-medium">Your Position</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               <p className="text-white font-semibold">
-                {formatEther(market.userBet.amount || BigInt(0))} ETH on {market.userBet.betOnA ? market.outcomeA : market.outcomeB}
+                ${parseFloat(formatUnits(market.userBet.amount || BigInt(0), 18)).toFixed(0)} on {market.userBet.betOnA ? market.outcomeA : market.outcomeB}
               </p>
               {potentialWinnings && (
-                <div className="pt-2 space-y-1 border-t border-blue-500/20">
+                <div className="pt-2 space-y-1 border-t border-slate-700">
                   <div className="flex justify-between items-center">
                     <span className="text-slate-400 text-sm">Potential Payout:</span>
-                    <span className="text-green-400 font-semibold">{formatETH(potentialWinnings.totalPayout)} ETH</span>
+                    <span className="text-green-400 font-semibold">${formatPUSD(potentialWinnings.totalPayout)}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-400 text-sm">Potential Profit:</span>
-                    <span className="text-green-400 font-semibold">+{formatETH(potentialWinnings.profit)} ETH</span>
+                    <span className="text-green-400 font-semibold">+${formatPUSD(potentialWinnings.profit)}</span>
                   </div>
                   <p className="text-slate-500 text-xs pt-1">
                     * includes 2% protocol fee deduction
@@ -276,27 +312,52 @@ export function MarketCard({ market }: MarketCardProps) {
           <div className="space-y-3">
             <Input
               type="number"
-              placeholder="Amount in ETH"
+              placeholder="Amount in $"
               value={betAmount}
               onChange={(e) => setBetAmount(e.target.value)}
               className="bg-slate-800 border-slate-700 text-white"
-              step="0.01"
+              step="1"
               min="0"
             />
-            <Button
-              onClick={handleBet}
-              disabled={isPlacingBet || !betAmount}
-              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-            >
-              {isPlacingBet ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Placing Bet...
-                </>
-              ) : (
-                `Bet ${betAmount || '0'} ETH on ${selectedOutcome === 'A' ? market.outcomeA : market.outcomeB}`
-              )}
-            </Button>
+            <div className="flex justify-between text-sm text-slate-400">
+              <span>Your Balance:</span>
+              <span>${parseFloat(pUsdBalance).toFixed(2)}</span>
+            </div>
+
+            {needsApproval ? (
+              <Button
+                onClick={handleApprove}
+                disabled={isApproving || isApprovingConfirm || !betAmount}
+                className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600"
+              >
+                {isApproving || isApprovingConfirm ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Approving...
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-4 h-4 mr-2" />
+                    Approve ${betAmount || '0'}
+                  </>
+                )}
+              </Button>
+            ) : (
+              <Button
+                onClick={handleBet}
+                disabled={isPlacingBet || !betAmount}
+                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+              >
+                {isPlacingBet ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Placing Bet...
+                  </>
+                ) : (
+                  `Bet $${betAmount || '0'} on ${selectedOutcome === 'A' ? market.outcomeA : market.outcomeB}`
+                )}
+              </Button>
+            )}
           </div>
         )}
       </CardContent>
@@ -331,15 +392,15 @@ export function MarketCard({ market }: MarketCardProps) {
                 <CardContent className="space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-slate-400 text-sm">Total Payout:</span>
-                    <span className="text-white text-lg font-bold">{formatETH(actualWinnings.totalPayout)} ETH</span>
+                    <span className="text-white text-lg font-bold">${formatPUSD(actualWinnings.totalPayout)}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-400 text-sm">Profit:</span>
-                    <span className="text-green-400 font-semibold">+{formatETH(actualWinnings.profit)} ETH</span>
+                    <span className="text-green-400 font-semibold">+${formatPUSD(actualWinnings.profit)}</span>
                   </div>
                   <div className="pt-2 border-t border-green-500/20">
                     <p className="text-slate-500 text-xs">
-                      Original bet: {formatEther(market.userBet?.amount || BigInt(0))} ETH
+                      Original bet: ${parseFloat(formatUnits(market.userBet?.amount || BigInt(0), 18)).toFixed(0)}
                     </p>
                   </div>
                 </CardContent>
@@ -375,11 +436,11 @@ export function MarketCard({ market }: MarketCardProps) {
               <CardContent className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400 text-sm">Bet Amount:</span>
-                  <span className="text-white text-lg font-bold">{formatEther(market.userBet.amount || BigInt(0))} ETH</span>
+                  <span className="text-white text-lg font-bold">${parseFloat(formatUnits(market.userBet.amount || BigInt(0), 18)).toFixed(0)}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400 text-sm">Loss:</span>
-                  <span className="text-red-400 font-semibold">-{formatEther(market.userBet.amount || BigInt(0))} ETH</span>
+                  <span className="text-red-400 font-semibold">-${parseFloat(formatUnits(market.userBet.amount || BigInt(0), 18)).toFixed(0)}</span>
                 </div>
                 <div className="pt-2 border-t border-red-500/20">
                   <p className="text-slate-500 text-xs">

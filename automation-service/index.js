@@ -44,30 +44,16 @@ async function initialize() {
   console.log('');
 }
 
-// TESTING MODE: Resolve markets every 5 minutes instead of daily
-// For production, use the commented-out functions below
-function getNextMidnight() {
-  const now = Math.floor(Date.now() / 1000);
-  return now + (5 * 60); // 5 minutes from now
-}
+// Load timing configuration based on environment
+// Use test-config.js for local testing (5 min markets)
+// Use production-config.js for testnet/mainnet (24 hour markets)
+const configFile = process.env.USE_PRODUCTION_CONFIG === 'true'
+  ? './production-config.js'
+  : './test-config.js';
 
-// Create new market 10 seconds after resolution
-function getOneMinuteAfterMidnight() {
-  return getNextMidnight() + 10; // 10 seconds after "midnight"
-}
+const { getNextMidnight, getOneMinuteAfterMidnight } = require(configFile);
 
-/* PRODUCTION MODE: Uncomment these for real daily markets
-function getNextMidnight() {
-  const now = new Date();
-  const midnight = new Date(now);
-  midnight.setHours(24, 0, 0, 0); // Next midnight
-  return Math.floor(midnight.getTime() / 1000);
-}
-
-function getOneMinuteAfterMidnight() {
-  return getNextMidnight() + 60;
-}
-*/
+console.log(`Using config: ${configFile}`);
 
 // Check if there's an active daily market
 async function getActiveDailyMarket() {
