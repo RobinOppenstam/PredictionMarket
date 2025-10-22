@@ -94,12 +94,48 @@ export function MarketCard({ market }: MarketCardProps) {
     return parseFloat(value.toFixed(2)).toString();
   };
 
+  // Helper to format volume in K notation
+  const formatVolume = (value: number): string => {
+    if (value >= 1000) {
+      return (value / 1000).toFixed(1).replace('.', ',') + 'K';
+    }
+    return value.toFixed(0);
+  };
+
   const totalPool = (market.totalPoolA || BigInt(0)) + (market.totalPoolB || BigInt(0));
   const oddsA = totalPool > BigInt(0) ? (Number(market.totalPoolA || 0) / Number(totalPool)) * 100 : 50;
   const oddsB = totalPool > BigInt(0) ? (Number(market.totalPoolB || 0) / Number(totalPool)) * 100 : 50;
 
   // Check if user needs to approve tokens
   const needsApproval = betAmount && !hasAllowance(betAmount);
+
+  // Calculate estimated returns for bet being placed
+  const calculateEstimatedReturns = () => {
+    if (!betAmount || !selectedOutcome) return null;
+
+    const betAmountNum = parseFloat(betAmount);
+    if (isNaN(betAmountNum) || betAmountNum <= 0) return null;
+
+    const winningPool = selectedOutcome === 'A' ? (market.totalPoolA || BigInt(0)) : (market.totalPoolB || BigInt(0));
+    const losingPool = selectedOutcome === 'A' ? (market.totalPoolB || BigInt(0)) : (market.totalPoolA || BigInt(0));
+
+    const FEE_PERCENT = 0.98; // 1 - (200/10000) = 0.98
+
+    // Simulate the new pool after the bet
+    const newWinningPool = Number(formatEther(winningPool)) + betAmountNum;
+    const losingPoolEth = Number(formatEther(losingPool));
+
+    // Calculate share of losing pool
+    const userShare = (betAmountNum / newWinningPool) * losingPoolEth * FEE_PERCENT;
+
+    // Total payout = original bet + share of losing pool
+    const totalPayout = betAmountNum + userShare;
+    const profit = userShare;
+
+    return { totalPayout, profit };
+  };
+
+  const estimatedReturns = calculateEstimatedReturns();
 
   // Calculate potential winnings for user's bet
   const calculatePotentialWinnings = () => {
@@ -247,13 +283,16 @@ export function MarketCard({ market }: MarketCardProps) {
             </Badge>
           )}
         </div>
-        <CardDescription className="text-slate-400 flex items-center gap-2">
-          <Clock className="w-4 h-4" />
-          {market.resolved ? (
-            'Market closed'
-          ) : (
-            `${daysLeft}d ${hoursLeft}h ${minutesLeft}m ${secondsLeft}s remaining`
-          )}
+        <CardDescription className="text-slate-400 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4" />
+            {market.resolved ? (
+              'Market closed'
+            ) : (
+              `${daysLeft}d ${hoursLeft}h ${minutesLeft}m ${secondsLeft}s remaining`
+            )}
+          </div>
+          <span className="text-xs text-slate-500">Vol: ${formatVolume(Math.floor(Number(formatEther(totalPool))))}</span>
         </CardDescription>
       </CardHeader>
 
@@ -329,9 +368,11 @@ export function MarketCard({ market }: MarketCardProps) {
               <span className="text-sm text-slate-400">{oddsA.toFixed(1)}%</span>
             </div>
             <Progress value={oddsA} className="h-2 bg-slate-700" />
-            <p className="text-sm text-slate-400 mt-2">
-              Pool: ${parseFloat(formatUnits(market.totalPoolA || BigInt(0), 18)).toFixed(0)}
-            </p>
+            {market.userBet && market.userBet.betOnA && !market.resolved && potentialWinnings && (
+              <p className="text-xs text-slate-400 mt-2">
+                Position: ${parseFloat(formatUnits(market.userBet.amount || BigInt(0), 18)).toFixed(0)} • To Win: <span className="text-green-400">+${formatPUSD(potentialWinnings.profit)}</span>
+              </p>
+            )}
           </button>
 
           {/* Outcome B */}
@@ -356,40 +397,14 @@ export function MarketCard({ market }: MarketCardProps) {
               <span className="text-sm text-slate-400">{oddsB.toFixed(1)}%</span>
             </div>
             <Progress value={oddsB} className="h-2 bg-slate-700" />
-            <p className="text-sm text-slate-400 mt-2">
-              Pool: ${parseFloat(formatUnits(market.totalPoolB || BigInt(0), 18)).toFixed(0)}
-            </p>
+            {market.userBet && !market.userBet.betOnA && !market.resolved && potentialWinnings && (
+              <p className="text-xs text-slate-400 mt-2">
+                Position: ${parseFloat(formatUnits(market.userBet.amount || BigInt(0), 18)).toFixed(0)} • To Win: <span className="text-green-400">+${formatPUSD(potentialWinnings.profit)}</span>
+              </p>
+            )}
           </button>
         </div>
 
-        {/* User's Bet */}
-        {market.userBet && (
-          <Card className="bg-slate-800/50 border-slate-700">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-slate-300 text-sm font-medium">Your Position</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <p className="text-white font-semibold">
-                ${parseFloat(formatUnits(market.userBet.amount || BigInt(0), 18)).toFixed(0)} on {market.userBet.betOnA ? formatOutcome(market.outcomeA, market.marketType) : formatOutcome(market.outcomeB, market.marketType)}
-              </p>
-              {potentialWinnings && (
-                <div className="pt-2 space-y-1 border-t border-slate-700">
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-400 text-sm">Potential Payout:</span>
-                    <span className="text-green-400 font-semibold">${formatPUSD(potentialWinnings.totalPayout)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-400 text-sm">Potential Profit:</span>
-                    <span className="text-green-400 font-semibold">+${formatPUSD(potentialWinnings.profit)}</span>
-                  </div>
-                  <p className="text-slate-500 text-xs pt-1">
-                    * includes 2% protocol fee deduction
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
 
         {/* Bet Input */}
         {!market.resolved && !market.userBet && selectedOutcome && (
@@ -413,6 +428,14 @@ export function MarketCard({ market }: MarketCardProps) {
                   <span>Your Balance:</span>
                   <span>${parseFloat(pUsdBalance).toFixed(2)}</span>
                 </div>
+
+                {/* Estimated Profit */}
+                {estimatedReturns && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">Est. Profit:</span>
+                    <span className="text-green-400 font-semibold">+${formatPUSD(estimatedReturns.profit)}</span>
+                  </div>
+                )}
 
                 {needsApproval ? (
                   <Button
