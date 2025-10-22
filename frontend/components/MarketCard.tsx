@@ -38,6 +38,23 @@ function getMarketIcon(marketName: string): string {
   return '/btcIcon.png';
 }
 
+// Helper function to format outcome text for daily markets
+function formatOutcome(outcome: string, marketType: MarketType): string {
+  if (marketType === MarketType.DAILY_OVER_UNDER) {
+    if (outcome.toLowerCase() === 'over') return 'Higher';
+    if (outcome.toLowerCase() === 'under') return 'Lower';
+  }
+  return outcome;
+}
+
+// Helper function to format market title for daily markets
+function formatMarketTitle(title: string, marketType: MarketType): string {
+  if (marketType === MarketType.DAILY_OVER_UNDER) {
+    return title.replace(/Over\/Under/gi, 'Higher/Lower');
+  }
+  return title;
+}
+
 export function MarketCard({ market }: MarketCardProps) {
   const [betAmount, setBetAmount] = useState('');
   const [selectedOutcome, setSelectedOutcome] = useState<'A' | 'B' | null>(null);
@@ -218,7 +235,7 @@ export function MarketCard({ market }: MarketCardProps) {
                 className={`object-cover w-full h-full ${marketIcon === '/goldIcon.png' ? 'scale-150 translate-y-[5%] rotate-[25deg]' : ''} ${marketIcon === '/goldvsethIcon.png' ? 'scale-[1.75]' : ''}`}
               />
             </div>
-            <CardTitle className="text-white text-xl">{market.name}</CardTitle>
+            <CardTitle className="text-white text-xl">{formatMarketTitle(market.name, market.marketType)}</CardTitle>
           </div>
           {market.resolved && (
             <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
@@ -304,7 +321,7 @@ export function MarketCard({ market }: MarketCardProps) {
                 {market.resolved && market.outcomeAWon && (
                   <Trophy className="w-4 h-4 text-green-400" />
                 )}
-                {market.outcomeA}
+                {formatOutcome(market.outcomeA, market.marketType)}
               </span>
               <span className="text-sm text-slate-400">{oddsA.toFixed(1)}%</span>
             </div>
@@ -331,7 +348,7 @@ export function MarketCard({ market }: MarketCardProps) {
                 {market.resolved && !market.outcomeAWon && (
                   <Trophy className="w-4 h-4 text-green-400" />
                 )}
-                {market.outcomeB}
+                {formatOutcome(market.outcomeB, market.marketType)}
               </span>
               <span className="text-sm text-slate-400">{oddsB.toFixed(1)}%</span>
             </div>
@@ -350,7 +367,7 @@ export function MarketCard({ market }: MarketCardProps) {
             </CardHeader>
             <CardContent className="space-y-2">
               <p className="text-white font-semibold">
-                ${parseFloat(formatUnits(market.userBet.amount || BigInt(0), 18)).toFixed(0)} on {market.userBet.betOnA ? market.outcomeA : market.outcomeB}
+                ${parseFloat(formatUnits(market.userBet.amount || BigInt(0), 18)).toFixed(0)} on {market.userBet.betOnA ? formatOutcome(market.outcomeA, market.marketType) : formatOutcome(market.outcomeB, market.marketType)}
               </p>
               {potentialWinnings && (
                 <div className="pt-2 space-y-1 border-t border-slate-700">
@@ -418,7 +435,7 @@ export function MarketCard({ market }: MarketCardProps) {
                     Placing Bet...
                   </>
                 ) : (
-                  `Bet $${betAmount || '0'} on ${selectedOutcome === 'A' ? market.outcomeA : market.outcomeB}`
+                  `Bet $${betAmount || '0'} on ${selectedOutcome === 'A' ? formatOutcome(market.outcomeA, market.marketType) : formatOutcome(market.outcomeB, market.marketType)}`
                 )}
               </Button>
             )}
@@ -508,10 +525,10 @@ export function MarketCard({ market }: MarketCardProps) {
                 </div>
                 <div className="pt-2 border-t border-red-500/20">
                   <p className="text-slate-500 text-xs">
-                    You bet on: {market.userBet.betOnA ? market.outcomeA : market.outcomeB}
+                    You bet on: {market.userBet.betOnA ? formatOutcome(market.outcomeA, market.marketType) : formatOutcome(market.outcomeB, market.marketType)}
                   </p>
                   <p className="text-slate-500 text-xs">
-                    Winner: {market.outcomeAWon ? market.outcomeA : market.outcomeB}
+                    Winner: {market.outcomeAWon ? formatOutcome(market.outcomeA, market.marketType) : formatOutcome(market.outcomeB, market.marketType)}
                   </p>
                 </div>
               </CardContent>
