@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { TrendingUp, Home, Droplet, Menu, X } from 'lucide-react';
+import { TrendingUp, Home, Droplet, Menu, X, Wallet } from 'lucide-react';
 import { ConnectButton } from '@/components/ConnectButton';
 import { ConnectButton as RainbowConnectButton } from '@rainbow-me/rainbowkit';
 
@@ -99,31 +99,9 @@ export function Navbar() {
                       ) : (
                         <button
                           onClick={openAccountModal}
-                          className="flex items-center gap-2 px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors"
+                          className="flex items-center justify-center text-white hover:text-purple-400 transition-colors"
                         >
-                          <div className="w-6 h-6 rounded-full overflow-hidden bg-gradient-to-br from-purple-500 to-pink-500">
-                            <img
-                              src={`https://avatar.vercel.sh/${account.address}`}
-                              alt="Avatar"
-                              className="w-full h-full"
-                            />
-                          </div>
-                          <svg
-                            width="12"
-                            height="12"
-                            viewBox="0 0 12 12"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="text-white"
-                          >
-                            <path
-                              d="M2.5 4.5L6 8L9.5 4.5"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
+                          <Wallet className="w-5 h-5" />
                         </button>
                       )}
                     </div>
