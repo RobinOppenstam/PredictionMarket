@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { TrendingUp, Home, Droplet, Menu, X, Wallet } from 'lucide-react';
+import { TrendingUp, Home, Droplet, Menu, X, Wallet, CheckCircle2 } from 'lucide-react';
 import { ConnectButton } from '@/components/ConnectButton';
 import { ConnectButton as RainbowConnectButton } from '@rainbow-me/rainbowkit';
 
@@ -13,6 +13,7 @@ export function Navbar() {
 
   const navLinks = [
     { href: '/', label: 'Markets', icon: Home },
+    { href: '/resolved', label: 'Resolved', icon: CheckCircle2 },
     { href: '/faucet', label: 'Faucet', icon: Droplet },
   ];
 
