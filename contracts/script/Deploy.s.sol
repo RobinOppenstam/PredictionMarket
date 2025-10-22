@@ -45,28 +45,11 @@ contract DeployScript is Script {
         console.log("   PredictionMarket deployed to:", address(market));
         console.log("");
 
-        // 5. Create initial markets
-        console.log("5. Creating initial markets...");
-
-        // Create Gold vs ETH race market
-        market.createMarket(
-            "Gold vs ETH to $5000",
-            "Gold reaches $5000 first",
-            "ETH reaches $5000 first",
-            SEPOLIA_XAU_USD,
-            SEPOLIA_ETH_USD,
-            5000_00000000, // $5000 with 8 decimals
-            90 // 90 days
-        );
-        console.log("   Race market created (Market ID: 0)");
-
-        // Create first daily Bitcoin over/under market
-        uint256 nextMidnight = ((block.timestamp / 1 days) + 1) * 1 days;
-        market.createDailyOverUnder(SEPOLIA_BTC_USD, nextMidnight);
-        console.log("   Daily Bitcoin over/under market created (Market ID: 1)");
-        console.log("");
-
         vm.stopBroadcast();
+
+        console.log("");
+        console.log("NOTE: Run the CreateMarkets script to create initial markets");
+        console.log("");
 
         // Print summary
         console.log("=== DEPLOYMENT SUMMARY ===");
@@ -152,7 +135,7 @@ contract DeployLocalScript is Script {
 
         // Create first daily market (5 minutes for testing)
         uint256 endTime = block.timestamp + 5 minutes;
-        market.createDailyOverUnder(address(btcOracle), endTime);
+        market.createDailyOverUnder(address(btcOracle), endTime, "Bitcoin");
         console.log("   Daily Bitcoin market created (Market ID: 1, 5 min duration)");
         console.log("");
 

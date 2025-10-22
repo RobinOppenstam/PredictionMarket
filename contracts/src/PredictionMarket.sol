@@ -125,7 +125,8 @@ contract PredictionMarket is Ownable, ReentrancyGuard {
 
     function createDailyOverUnder(
         address _oracle,
-        uint256 _endTime
+        uint256 _endTime,
+        string memory _assetName
     ) external {
         require(
             msg.sender == owner() || msg.sender == automationService,
@@ -133,12 +134,13 @@ contract PredictionMarket is Ownable, ReentrancyGuard {
         );
         require(_oracle != address(0), "Invalid oracle address");
         require(_endTime > block.timestamp, "End time must be in future");
+        require(bytes(_assetName).length > 0, "Asset name cannot be empty");
 
         // Get current price from oracle
         (int256 currentPrice, ) = getLatestPrice(_oracle);
         require(currentPrice > 0, "Invalid current price");
 
-        string memory name = "Daily Bitcoin Over/Under";
+        string memory name = string(abi.encodePacked("Daily ", _assetName, " Over/Under"));
         string memory outcomeA = "Over";
         string memory outcomeB = "Under";
 

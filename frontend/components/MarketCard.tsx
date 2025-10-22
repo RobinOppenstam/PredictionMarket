@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { parseEther, parseUnits, formatEther, formatUnits } from 'viem';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { usePlaceBet, useResolveMarket, useClaimWinnings } from '@/hooks/useMarketActions';
 import { useTokenApproval, useTokenBalances } from '@/hooks/useTokensSimple';
+import { useOraclePrice } from '@/hooks/useOraclePrice';
 import { pUSD_ADDRESS } from '@/lib/contracts';
 import { Loader2, TrendingUp, Clock, CheckCircle2, Trophy, Lock } from 'lucide-react';
 import { Market, MarketType } from '@/types';
@@ -17,15 +19,38 @@ interface MarketCardProps {
   market: Market;
 }
 
+// Helper function to get market icon based on market name
+function getMarketIcon(marketName: string): string {
+  const name = marketName.toLowerCase();
+
+  // Check for more specific patterns first (gold vs eth before just eth)
+  if (name.includes('gold') && name.includes('eth')) {
+    return '/goldvsethIcon.png';
+  } else if (name.includes('gold')) {
+    return '/goldIcon.png';
+  } else if (name.includes('ethereum') || name.includes('eth')) {
+    return '/ethIcon.png';
+  } else if (name.includes('bitcoin') || name.includes('btc')) {
+    return '/btcIcon.png';
+  }
+
+  // Default icon
+  return '/btcIcon.png';
+}
+
 export function MarketCard({ market }: MarketCardProps) {
   const [betAmount, setBetAmount] = useState('');
   const [selectedOutcome, setSelectedOutcome] = useState<'A' | 'B' | null>(null);
-  const [, setNow] = useState(Date.now());
+  const [now, setNow] = useState(Date.now());
 
   const { placeBet, isPlacingBet } = usePlaceBet();
   const { resolveMarket, isResolving } = useResolveMarket();
   const { claimWinnings, isClaiming } = useClaimWinnings();
   const { pUsdBalance, refetchBalances } = useTokenBalances();
+
+  // Fetch current prices from oracles
+  const { price: priceA } = useOraclePrice(market.oracleA);
+  const { price: priceB } = useOraclePrice(market.marketType === MarketType.RACE ? market.oracleB : null);
   const {
     approve,
     hasAllowance,
@@ -117,7 +142,7 @@ export function MarketCard({ market }: MarketCardProps) {
 
   const actualWinnings = calculateActualWinnings();
 
-  const timeLeft = market.endTime - Date.now() / 1000;
+  const timeLeft = market.endTime - now / 1000;
   const daysLeft = Math.max(0, Math.floor(timeLeft / 86400));
   const hoursLeft = Math.max(0, Math.floor((timeLeft % 86400) / 3600));
   const minutesLeft = Math.max(0, Math.floor((timeLeft % 3600) / 60));
@@ -177,20 +202,28 @@ export function MarketCard({ market }: MarketCardProps) {
     }
   };
 
+  const marketIcon = getMarketIcon(market.name);
+
   return (
     <Card className="bg-slate-900/50 backdrop-blur-xl border-slate-800 overflow-hidden">
       <CardHeader>
         <div className="flex items-start justify-between mb-2">
-          <CardTitle className="text-white text-xl">{market.name}</CardTitle>
-          {market.resolved ? (
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-slate-800/50 flex items-center justify-center p-2.5 shrink-0 overflow-hidden">
+              <Image
+                src={marketIcon}
+                alt={market.name}
+                width={48}
+                height={48}
+                className={`object-cover w-full h-full ${marketIcon === '/goldIcon.png' ? 'scale-150 translate-y-[5%] rotate-[25deg]' : ''} ${marketIcon === '/goldvsethIcon.png' ? 'scale-[1.75]' : ''}`}
+              />
+            </div>
+            <CardTitle className="text-white text-xl">{market.name}</CardTitle>
+          </div>
+          {market.resolved && (
             <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
               <CheckCircle2 className="w-3 h-3 mr-1" />
               Resolved
-            </Badge>
-          ) : (
-            <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
-              <TrendingUp className="w-3 h-3 mr-1" />
-              Active
             </Badge>
           )}
         </div>
@@ -205,18 +238,49 @@ export function MarketCard({ market }: MarketCardProps) {
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {/* Target Price or Creation Price */}
+        {/* Current & Target Prices */}
         <div className="bg-slate-800/50 rounded-xl p-4">
           {market.marketType === MarketType.DAILY_OVER_UNDER ? (
             <>
-              <p className="text-slate-400 text-sm mb-1">Starting Price (Today at 00:01)</p>
-              <p className="text-2xl font-bold text-white">${(Number(market.creationPrice) / 1e8).toLocaleString()}</p>
-              <p className="text-slate-500 text-xs mt-2">Will resolve at midnight (00:00)</p>
+              <div className="mb-3">
+                <p className="text-slate-400 text-xs mb-1">Starting Price</p>
+                <p className="text-xl font-bold text-white">${(Number(market.creationPrice) / 1e8).toLocaleString()}</p>
+              </div>
+              <div className="pt-2 border-t border-slate-700">
+                <p className="text-slate-400 text-xs">Current Price:</p>
+                <p className={`text-sm font-semibold ${
+                  priceA
+                    ? parseFloat(priceA) > (Number(market.creationPrice) / 1e8)
+                      ? 'text-green-400'
+                      : parseFloat(priceA) < (Number(market.creationPrice) / 1e8)
+                      ? 'text-red-400'
+                      : 'text-slate-400'
+                    : 'text-slate-400'
+                }`}>
+                  {priceA ? `$${parseFloat(priceA).toLocaleString()}` : '...'}
+                </p>
+              </div>
             </>
           ) : (
             <>
-              <p className="text-slate-400 text-sm mb-1">Target Price</p>
-              <p className="text-2xl font-bold text-white">${(Number(market.targetPrice) / 1e8).toLocaleString()}</p>
+              <div className="mb-3">
+                <p className="text-slate-400 text-xs mb-1">Target Price</p>
+                <p className="text-xl font-bold text-white">${(Number(market.targetPrice) / 1e8).toLocaleString()}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-700">
+                <div>
+                  <p className="text-slate-400 text-xs">Gold Price</p>
+                  <p className="text-sm font-semibold text-yellow-400">
+                    {priceA ? `$${parseFloat(priceA).toLocaleString()}` : '...'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-400 text-xs">ETH Price</p>
+                  <p className="text-sm font-semibold text-blue-400">
+                    {priceB ? `$${parseFloat(priceB).toLocaleString()}` : '...'}
+                  </p>
+                </div>
+              </div>
             </>
           )}
         </div>

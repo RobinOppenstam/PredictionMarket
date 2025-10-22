@@ -8,23 +8,27 @@ import { ConnectButton } from '@/components/ConnectButton';
 import { useMarkets } from '@/hooks/useMarkets';
 import { Button } from '@/components/ui/button';
 import { Loader2, TrendingUp } from 'lucide-react';
+import { MarketType } from '@/types';
 
-type MarketFilter = 'all' | 'active' | 'resolved';
+type MarketFilter = 'all' | 'daily' | 'other';
 
 export default function Home() {
   const { isConnected } = useAccount();
   const { markets, loading, refreshMarkets } = useMarkets();
   const [mounted, setMounted] = useState(false);
-  const [filter, setFilter] = useState<MarketFilter>('active');
+  const [filter, setFilter] = useState<MarketFilter>('all');
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Filter markets based on selected filter
+  // Filter markets based on selected filter - exclude resolved markets
   const filteredMarkets = markets.filter(market => {
-    if (filter === 'active') return !market.resolved;
-    if (filter === 'resolved') return market.resolved;
+    // Don't show resolved markets
+    if (market.resolved) return false;
+
+    if (filter === 'daily') return market.marketType === MarketType.DAILY_OVER_UNDER;
+    if (filter === 'other') return market.marketType !== MarketType.DAILY_OVER_UNDER;
     return true; // 'all'
   });
 
@@ -63,26 +67,6 @@ export default function Home() {
               {/* Filter Tabs */}
               <div className="flex gap-2 bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-xl p-1">
                 <button
-                  onClick={() => setFilter('active')}
-                  className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    filter === 'active'
-                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Active ({markets.filter(m => !m.resolved).length})
-                </button>
-                <button
-                  onClick={() => setFilter('resolved')}
-                  className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    filter === 'resolved'
-                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Resolved ({markets.filter(m => m.resolved).length})
-                </button>
-                <button
                   onClick={() => setFilter('all')}
                   className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                     filter === 'all'
@@ -90,7 +74,27 @@ export default function Home() {
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  All ({markets.length})
+                  All Markets ({markets.filter(m => !m.resolved).length})
+                </button>
+                <button
+                  onClick={() => setFilter('daily')}
+                  className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    filter === 'daily'
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Daily Markets ({markets.filter(m => !m.resolved && m.marketType === MarketType.DAILY_OVER_UNDER).length})
+                </button>
+                <button
+                  onClick={() => setFilter('other')}
+                  className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    filter === 'other'
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Other Markets ({markets.filter(m => !m.resolved && m.marketType !== MarketType.DAILY_OVER_UNDER).length})
                 </button>
               </div>
             </div>
@@ -102,16 +106,13 @@ export default function Home() {
             ) : filteredMarkets.length === 0 ? (
               <div className="text-center py-20">
                 <p className="text-slate-400 text-lg">
-                  {filter === 'active' && 'No active markets'}
-                  {filter === 'resolved' && 'No resolved markets'}
-                  {filter === 'all' && 'No markets available yet'}
+                  {filter === 'daily' && 'No daily markets available'}
+                  {filter === 'other' && 'No other markets available'}
+                  {filter === 'all' && 'No active markets available'}
                 </p>
-                {isOwner && filter === 'all' && (
-                  <p className="text-slate-500 mt-2">Create your first market to get started</p>
-                )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
                 {filteredMarkets.map((market) => (
                   <MarketCard key={market.id} market={market} />
                 ))}
