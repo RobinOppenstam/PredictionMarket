@@ -51,6 +51,18 @@ prediction-market/
 └── automation-service/ # Background service for daily market creation
 ```
 
+## Deployed Contracts (Sepolia Testnet)
+
+### Core Contracts
+- **PredictionMarket**: [`0x27973Aaa8d043a68b6fb448b5A3E78348a70F0d8`](https://sepolia.etherscan.io/address/0x27973Aaa8d043a68b6fb448b5A3E78348a70F0d8)
+- **pUSD Token**: [`0x8bA038f831116bDFeA3c90c934a94a33c32a98f0`](https://sepolia.etherscan.io/address/0x8bA038f831116bDFeA3c90c934a94a33c32a98f0)
+- **Faucet**: [`0x71a850d8B0a04B2a16a393e737cEF81dA4219d4f`](https://sepolia.etherscan.io/address/0x71a850d8B0a04B2a16a393e737cEF81dA4219d4f)
+
+### Chainlink Oracles
+- **BTC/USD**: [`0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43`](https://sepolia.etherscan.io/address/0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43)
+- **ETH/USD**: [`0x694AA1769357215DE4FAC081bf1f309aDC325306`](https://sepolia.etherscan.io/address/0x694AA1769357215DE4FAC081bf1f309aDC325306)
+- **XAU/USD (Gold)**: [`0xC5981F461d74c46eB4b0CF3f4Ec79f025573B0Ea`](https://sepolia.etherscan.io/address/0xC5981F461d74c46eB4b0CF3f4Ec79f025573B0Ea)
+
 ## Getting Started
 
 Each component has its own setup instructions:
